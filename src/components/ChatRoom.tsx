@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { useSocket } from '../hooks/useSocket';
@@ -13,36 +13,48 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
 
-  if (!userId || !username || !roomId) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (!userId || !username || !roomId) {
+      navigate('/');
+      return;
+    }
+  }, [userId, username, roomId, navigate]);
 
-  const { sendMessage, playGame } = useSocket(roomId, userId, username);
+  const { sendMessage, playGame } = useSocket(roomId!, userId!, username!);
 
   useEffect(() => {
-    socket.on('message', (message: Message) => {
+    const handleMessage = (message: Message) => {
       setMessages(prev => [...prev, message]);
-    });
+    };
 
-    socket.on('users_update', (updatedUsers: User[]) => {
+    const handleUsersUpdate = (updatedUsers: User[]) => {
       setUsers(updatedUsers);
-    });
+    };
 
-    socket.on('user_left', (leftUserId: string) => {
+    const handleUserLeft = (leftUserId: string) => {
       setUsers(prev => prev.filter(user => user.id !== leftUserId));
-    });
+      toast.info('A user has left the room');
+    };
+
+    socket.on('message', handleMessage);
+    socket.on('users_update', handleUsersUpdate);
+    socket.on('user_left', handleUserLeft);
 
     return () => {
-      socket.off('message');
-      socket.off('users_update');
-      socket.off('user_left');
+      socket.off('message', handleMessage);
+      socket.off('users_update', handleUsersUpdate);
+      socket.off('user_left', handleUserLeft);
     };
   }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,15 +64,20 @@ export default function ChatRoom() {
     setNewMessage('');
   };
 
+  if (!userId || !username || !roomId) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col h-screen">
       <div className="bg-white shadow-md p-4">
         <h1 className="text-2xl font-bold">Chat Room: {roomId}</h1>
+        <p className="text-sm text-gray-600">Connected users: {users.length}</p>
       </div>
       
       <div className="flex-1 flex">
-        <div className="flex-1 p-4 overflow-auto flex flex-col space-y-4">
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 p-4 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -71,20 +88,21 @@ export default function ChatRoom() {
                 }`}
               >
                 <div
-                  className={`inline-block p-2 rounded-lg ${
+                  className={`inline-block p-2 rounded-lg max-w-[80%] ${
                     message.userId === userId
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-200'
                   }`}
                 >
                   <p className="text-sm font-semibold">{message.username}</p>
-                  <p>{message.text}</p>
+                  <p className="break-words">{message.text}</p>
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
           
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
             <input
               type="text"
               value={newMessage}
@@ -94,7 +112,7 @@ export default function ChatRoom() {
             />
             <button
               type="submit"
-              className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
+              className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"
             >
               <Send className="w-5 h-5" />
             </button>
@@ -105,15 +123,17 @@ export default function ChatRoom() {
           <CoinFlip playGame={playGame} />
           <div className="mt-4">
             <h3 className="font-bold mb-2">Users in Room</h3>
-            {users.map((user) => (
-              <div key={user.id} className="flex justify-between items-center py-2">
-                <span>{user.username}</span>
-                <span className="flex items-center">
-                  <Coins className="w-4 h-4 mr-1" />
-                  {user.balance}
-                </span>
-              </div>
-            ))}
+            <div className="space-y-2">
+              {users.map((user) => (
+                <div key={user.id} className="flex justify-between items-center p-2 bg-white rounded-lg shadow-sm">
+                  <span className="font-medium">{user.username}</span>
+                  <span className="flex items-center text-yellow-600">
+                    <Coins className="w-4 h-4 mr-1" />
+                    {user.balance}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
