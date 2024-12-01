@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare } from 'lucide-react';
+import ServerStatus from './ServerStatus';
 
 export default function Home() {
   const [roomId, setRoomId] = useState('');
@@ -20,8 +21,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-        <div className="flex items-center justify-center mb-8">
-          <MessageSquare className="w-12 h-12 text-blue-500" />
+        <div className="flex flex-col items-center justify-center mb-8">
+          <MessageSquare className="w-12 h-12 text-blue-500 mb-4" />
+          <ServerStatus />
         </div>
         
         <h1 className="text-2xl font-bold text-center mb-6">
