@@ -6,13 +6,15 @@ import cors from 'cors';
 const app = express();
 app.use(cors());
 
-// Serve static files from the dist directory
-app.use(express.static('dist'));
+// Health check endpoint for Render.com
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "https://chat-room-demo.netlify.app"],
+    origin: ["http://localhost:5173", "https://flourishing-pithivier-225ae4.netlify.app"],
     methods: ["GET", "POST"]
   }
 });
